@@ -1,8 +1,8 @@
 clk: clk.o
-	g++ $(CXXFLAGS) clk.o -o clk
+	g++ $(CXXFLAGS) clk.o -o clk -lncurses
 
 clk.o:
-	g++ $(CXXFLAGS) -c clk.cpp
+	g++ $(CXXFLAGS) -c clk.cpp -lncurses
 
 clean:
 	rm -f clk.o clk
