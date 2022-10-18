@@ -30,13 +30,25 @@ bool operator<(alarm_t lhs, alarm_t rhs);
 void validate(alarm_t& alarm);
 void get_dayname(char day[4], const alarm_t& alarm);
 void get_monthname(char mon[4], int month);
-void schedule_output();
 
 void menu_prompt();
+
 void schedule_prompt();
+void schedule_edit();
+void schedule_view();
+
+void timing_prompt();
+void timing_edit();
+void timing_view();
+void stopwatch_view();
+
+void worldclock_prompt();
+void worldclock_edit();
+void worldclock_view();
 
 void input_handler();
 void update();
+void task_scheduler();
 
 std::unordered_map<int, int> month_days {
     {1, 31},
@@ -88,32 +100,63 @@ long input_keyPressed;
 #define K_LT 1792836  // Left Arrow
 #define QUIT 113      // q
 #define ENTR 10       // Return
+#define DFLT -1       // Default
 
 int state;
 
-#define MENU 0  // Program Is At The Main Options Screen
-#define SCHD 1  // Program Is At Schedule Options Screen
-#define SCHV 2  // Program Is Viewing The Scheduled Alarms List
-#define SCHE 3  // Program Is Editing The Scheduled Alarms List
-#define TIMR 4  // Program Is At Timer Options Screen
-#define TIMV 5  // Program Is Viewing The Timer
-#define TIED 4  // Program Is Editing The Timer
-#define WCLK 5  // Program Is Viewing The World Clock List
-#define WCED 6  // Program Is Editing The World Clock List
-#define EXIT 7  // Program Is Exiting
+// Menu state
+#define MENU 0x00   // Program Is At The Main Options Screen
 
-int running = 1;
+// Schedule states
+#define SCHD 0x01   // Program Is At Schedule Options Screen
+#define SCHE 0x02   // Program Is Editing The Scheduled Alarms List
+#define SCHV 0x03   // Program Is Viewing The Scheduled Alarms List
+
+// Timing states
+#define TIMR 0x04   // Program Is At Timing Options Screen
+#define TIED 0x05   // Program Is Editing The Timer
+#define TIMV 0x06   // Program Is Viewing The Timer
+#define TIST 0x07   // Program Is Viewing The Stopwatch
+
+// World clock states
+#define WCLK 0x08   // Program Is At World Clock Options Screen
+#define WCED 0x09   // Program Is Editing The World Clock List
+#define WCKV 0x0A   // Program Is Viewing The World Clock List
+
+// Termination states
+#define INRP 0x0B   // Program Is Interrupting Current Execution
+#define EXIT 0x0C   // Program Is Exiting
 
 int selection;
 
-#define MS_OPT 0  // Menu Schedule Option Selected
-#define MT_OPT 1  // Menu Timer Option Selected
-#define MW_OPT 2  // Menu World Clock Option Selected
-#define ME_OPT 3  // Menu Exit Option Selected
+// Menu prompt options
+#define MS_OPT 0x00  // Menu Schedule Option Selected
+#define MT_OPT 0x01  // Menu Timer Option Selected
+#define MW_OPT 0x02  // Menu World Clock Option Selected
+#define ME_OPT 0x03  // Menu Exit Option Selected
 
-#define SE_OPT 0  // Schedule Edit Option Selected
-#define SV_OPT 1  // Schedule View Option Selected
-#define SB_OPT 2  // Schedule Back Option Selected
+// Schedule prompt options
+#define SE_OPT 0x04  // Schedule Edit Option Selected
+#define SV_OPT 0x05  // Schedule View Option Selected
+#define SB_OPT 0x06  // Schedule Back Option Selected
+
+// Timing prompt options
+#define TE_OPT 0x07  // Timer Edit Option Selected
+#define TV_OPT 0x08  // Timer View Option Selected
+#define TS_OPT 0x09  // Stopwatch View Option Selected
+#define TB_OPT 0x0A  // Timer Back Option Selected
+
+// Timing edit options
+#define TE_SAV 0x0B  // Save Timer Option Selected
+#define TE_CNC 0x0C  // Cancel Timer Edit Option Selected
+
+// World clock prompt options
+#define WE_OPT 0x0D  // World Clock List Edit Option Selected
+#define WV_OPT 0x0E  // World Clock List View Option Selected
+#define WB_OPT 0x0F  // World Clock List Back Option Selected
+
+// Other Options
+#define NO_OPT 0xFF  // No Option Selected
 
 std::ifstream schedule("schedule.txt");
 std::ostringstream output;
@@ -123,10 +166,21 @@ char mon[4];
 alarm_t res_base;
 DynamicArray<alarm_t> alarms;
 
+WINDOW* wnd;
+
+int timer_column = 0;
+
+int timer_hour = 0;
+int timer_minute = 0;
+int timer_second = 0;
+int timer_phour = 0;
+int timer_pminute = 0;
+int timer_psecond = 0;
+
 int main() {
     clear(std::cout);
 
-    initscr();
+    wnd = initscr();
     noecho();
     cbreak();
     curs_set(0);
@@ -146,13 +200,13 @@ int main() {
     
     clear();
 
-    // prompt user with menu
-    selection = 0;
+    // set initial program state
     state = MENU;
-    menu_prompt();
+    selection = MS_OPT;
 
-    // print schedules
-    // schedule_output();
+    // to prevent function call frame overflow, functions should return to task scheduler instead of
+    // nesting calls within functions
+    task_scheduler();
 
     endwin();
 
@@ -294,8 +348,44 @@ void get_monthname(char mon[4], int month) {
     }
 }
 
-void schedule_output() {
-    while (true) {
+void menu_prompt() {
+    clear();
+    refresh();
+    
+    printf("[ClockIn] Menu\r\n");
+    printf("[%c] Schedule\r\n", (selection == MS_OPT ? 'X' : ' '));
+    printf("[%c] Timing\r\n", (selection == MT_OPT ? 'X' : ' '));
+    printf("[%c] World Clock\r\n", (selection == MW_OPT ? 'X' : ' '));
+    printf("[%c] Exit\r\n", (selection == ME_OPT ? 'X' : ' '));
+
+    input_handler();
+}
+
+void schedule_prompt() {
+    clear();
+    refresh();
+
+    printf("Schedule Module\r\n");
+    printf("[%c] Edit Schedule\r\n", (selection == SE_OPT ? 'X' : ' '));
+    printf("[%c] View Schedule\r\n", (selection == SV_OPT ? 'X' : ' '));
+    printf("[%c] Back\r\n", (selection == SB_OPT ? 'X' : ' '));
+
+    input_handler();
+}
+
+void schedule_edit() {
+    static int r = 0;
+    static int c = 0;
+
+    input_handler();
+}
+
+void schedule_view() {
+    nodelay(wnd, true);
+
+    while (state != INRP) {
+        clear(std::cout);
+
         auto now = time(nullptr);
         char* res = asctime(localtime(&now));
 
@@ -352,36 +442,168 @@ void schedule_output() {
             output.put(res[i++]);
         }
 
+        output << "\r\n\nPress any key to return...";
+
         std::cout << output.str() << reset << std::flush;
         output.str("");
 
         std::this_thread::sleep_for(100ms);
-        clear(std::cout);
+
+        input_handler();
     }
+
+    nodelay(wnd, false);
+
+    // go back to schedule menu
+    state = SCHD;
+    selection = SV_OPT;
 }
 
-void menu_prompt() {
+void timing_prompt() {
     clear();
     refresh();
-    
-    printf("[%c] Schedule\r\n", (selection == 0 ? 'X' : ' '));
-    printf("[%c] Timer\r\n", (selection == 1 ? 'X' : ' '));
-    printf("[%c] World Clock\r\n", (selection == 2 ? 'X' : ' '));
-    printf("[%c] Exit\r\n", (selection == 3 ? 'X' : ' '));
+
+    printf("Timing Module\r\n");
+    printf("[%c] Edit Timer\r\n", (selection == TE_OPT ? 'X' : ' '));
+    printf("[%c] View Timer\r\n", (selection == TV_OPT ? 'X' : ' '));
+    printf("[%c] View Stopwatch\r\n", (selection == TS_OPT ? 'X' : ' '));
+    printf("[%c] Back\r\n", (selection == TB_OPT ? 'X' : ' '));
 
     input_handler();
 }
 
-void schedule_prompt() {
+inline int prev_hour(int offs = 1) {
+    return (timer_hour + 24 - offs) % 24;
+}
+
+inline int prev_min(int offs = 1) {
+    return (timer_minute + 60 - offs) % 60;
+}
+
+inline int prev_sec(int offs = 1) {
+    return (timer_second + 60 - offs) % 60;
+}
+
+inline int next_hour(int offs = 1) {
+    return (timer_hour + offs) % 24;
+}
+
+inline int next_min(int offs = 1) {
+    return (timer_minute + offs) % 60;
+}
+
+inline int next_sec(int offs = 1) {
+    return (timer_second + offs) % 60;
+}
+
+void timing_edit() {
+    timer_column = 0;
+
+    nodelay(wnd, true);
+
+    while (state != INRP) {
+        clear(std::cout);
+
+        output << std::setw(18) << "Edit Timer" << std::setw(22) << "Options" << "\r\n";
+        output << std::right;
+
+        // value labels
+        output << (timer_column == 0 ? yellow : dk_gray) << std::setw(8) << "hours"
+               << (timer_column == 1 ? yellow : dk_gray) << std::setw(9) << "minutes"
+               << (timer_column == 2 ? yellow : dk_gray) << std::setw(9) << "seconds"
+               << reset << std::setw(14) << (selection == TE_SAV ? "[X]   Save" : "[ ]   Save")
+               << "\r\n";
+
+        // first row
+        output << (timer_column == 0 ? bg_lt_blue : reset) << std::setw(8);
+        if (timer_column == 0) output << prev_hour() << reset << ' ';
+        else output << ' ' << ' ';
+
+        output << (timer_column == 1 ? bg_lt_blue : reset) << std::setw(8);
+        if (timer_column == 1) output << prev_min() << reset << ' ';
+        else output << ' ' << ' ';
+
+        output << (timer_column == 2 ? bg_lt_blue : reset) << std::setw(8);
+        if (timer_column == 2) output << prev_sec();
+        else output << ' ';
+
+        output << reset << std::setw(14) << (selection == TE_CNC ? "[X] Cancel" : "[ ] Cancel")
+               << "\r\n";
+
+        // second row
+        if (timer_column == 0) output << bg_cyan << lt_blue;
+        else output << reset << dk_gray;
+        output << std::setw(8) << timer_hour << reset << ' ';
+
+        if (timer_column == 1) output << bg_cyan << lt_blue;
+        else output << reset << dk_gray;
+        output << std::setw(8) << timer_minute << reset << ' ';
+
+        if (timer_column == 2) output << bg_cyan << lt_blue;
+        else output << reset << dk_gray;
+        output << std::setw(8) << timer_second << reset << "\r\n";
+
+        // third row
+        output << (timer_column == 0 ? bg_lt_blue : reset) << std::setw(8);
+        if (timer_column == 0) output << next_hour();
+        else output << ' ' << ' ';
+
+        output << (timer_column == 1 ? bg_lt_blue : reset) << std::setw(8);
+        if (timer_column == 1) output << next_min();
+        else output << ' ' << ' ';
+
+        output << (timer_column == 2 ? bg_lt_blue : reset) << std::setw(8);
+        if (timer_column == 2) output << next_sec();
+        else output << ' ';
+
+        output << reset << "\r\n";
+
+        std::cout << output.str() << reset << std::flush;
+        output.str("");
+
+        std::this_thread::sleep_for(5ms);
+
+        input_handler();
+    }
+
+    nodelay(wnd, false);
+
+    // set timer values to last save
+    timer_hour = timer_phour;
+    timer_minute = timer_pminute;
+    timer_second = timer_psecond;
+
+    // go back to timing menu
+    state = TIMR;
+    selection = TE_OPT;
+}
+
+void timing_view() {
+
+}
+
+void stopwatch_view() {
+
+}
+
+void worldclock_prompt() {
     clear();
     refresh();
 
-    printf("Schedule Module\r\n");
-    printf("[%c] Edit Schedule\r\n", (selection == 0 ? 'X' : ' '));
-    printf("[%c] View Schedule\r\n", (selection == 1 ? 'X' : ' '));
-    printf("[%c] Back\r\n", (selection == 2 ? 'X' : ' '));
+    printf("World Clock Module\r\n");
+    printf("[%c] Edit World Clock List\r\n", (selection == WE_OPT ? 'X' : ' '));
+    printf("[%c] View World Clock List\r\n", (selection == WV_OPT ? 'X' : ' '));
+    printf("[%c] Back\r\n", (selection == WB_OPT ? 'X' : ' '));
 
     input_handler();
+}
+
+void worldclock_edit() {
+
+}
+
+void worldclock_view() {
+
 }
 
 void input_handler() {
@@ -389,6 +611,7 @@ void input_handler() {
     if (state != EXIT) {
         input_keyPressed = -1;
         ch[0] = getch();
+
         if (ch[0] == '\033') {
             ch[1] = getch();
             ch[2] = getch();
@@ -402,7 +625,34 @@ void input_handler() {
         } else {
             input_keyPressed = (long)ch[0];
         }
+
         update();
+    }
+}
+
+void option_select() {
+    switch (selection) {
+        case MS_OPT: state = SCHD; selection = SE_OPT; break;
+        case MT_OPT: state = TIMR; selection = TE_OPT; break;
+        case MW_OPT: state = WCLK; selection = WE_OPT; break;
+        case ME_OPT: state = EXIT; break;
+        case SE_OPT: state = SCHE; break;
+        case SV_OPT: state = SCHV; break;
+        case SB_OPT: state = MENU; selection = MS_OPT; break;
+        case TE_OPT: state = TIED; break;
+        case TE_CNC: state = INRP; selection = TE_OPT; break;
+        case TE_SAV:
+            timer_phour = timer_hour;
+            timer_pminute = timer_minute;
+            timer_psecond = timer_second;
+            break;
+        case TV_OPT: state = TIMV; break;
+        case TS_OPT: state = TIST; break;
+        case TB_OPT: state = MENU; selection = MT_OPT; break;
+        case WE_OPT: state = WCED; break;
+        case WV_OPT: state = WCKV; break;
+        case WB_OPT: state = MENU; selection = MW_OPT; break;
+        default: break;
     }
 }
 
@@ -410,56 +660,96 @@ void update() {
     switch (state) {
     case MENU:
         switch (input_keyPressed) {
-        case K_DN:
-            if (selection < 3) ++selection;
-            menu_prompt();
-            break;
-        case K_UP:
-            if (selection > 0) --selection;
-            menu_prompt();
-            break;
-        case ENTR:
-            switch (selection) {
-            case MS_OPT:
-                state = SCHD;
-                break;
-            case MT_OPT:
-                state = TIMR;
-                break;
-            case MW_OPT:
-                state = WCLK;
-                break;
-            case ME_OPT:
-                state = EXIT;
-                break;
-            default:
-                break;
-            }
-            break;
-        default:
-            printf("Unknown action: %ld\r\n", input_keyPressed);
-            break;
+            case K_DN: if (selection < ME_OPT) ++selection; break;
+            case K_UP: if (selection > MS_OPT) --selection; break;
+            case ENTR: option_select(); break;
+            default: break;
         }
         break;
     case SCHD:
         switch (input_keyPressed) {
-        case K_DN:
-            if (selection < 2) ++selection;
-            schedule_prompt();
-            break;
-        case K_UP:
-            if (selection > 0) --selection;
-            schedule_prompt();
-            break;
-        case ENTR:
-            switch (selection) {
-            case SE_OPT:
-                break;
-            case SV_OPT:
-                break;
-            case SB_OPT:
-                break;
-            }
+            case K_DN: if (selection < SB_OPT) ++selection; break;
+            case K_UP: if (selection > SE_OPT) --selection; break;
+            case ENTR: option_select(); break;
+            default: break;
         }
+        break;
+    case SCHE:
+        break;
+    case SCHV:
+        switch (input_keyPressed) {
+            case -1: /* NoInput */ break;
+            default: state = INRP; break;
+        }
+        break;
+    case TIMR:
+        switch (input_keyPressed) {
+            case K_DN: if (selection < TB_OPT) ++selection; break;
+            case K_UP: if (selection > TE_OPT) --selection; break;
+            case ENTR: option_select(); break;
+            default: break;
+        }
+        break;
+    case TIED:
+        switch (input_keyPressed) {
+            case K_LT:
+                if (timer_column > 0) --timer_column;
+                if (timer_column <= 2) selection = NO_OPT;
+                break;
+            case K_RT:
+                if (timer_column < 3) ++timer_column;
+                if (timer_column == 3) selection = TE_SAV;
+                break;
+            case K_UP:
+                switch (timer_column) {
+                    case 0: timer_hour = prev_hour();  break;
+                    case 1: timer_minute = prev_min(); break;
+                    case 2: timer_second = prev_sec(); break;
+                    case 3: selection = TE_SAV;        break;
+                }
+                break;
+            case K_DN:
+                switch (timer_column) {
+                    case 0: timer_hour = next_hour();  break;
+                    case 1: timer_minute = next_min(); break;
+                    case 2: timer_second = next_sec(); break;
+                    case 3: selection = TE_CNC;        break;
+                }
+                break;
+            case ENTR: option_select(); break;
+            default: break;
+        }
+        break;
+    case TIMV:
+        break;
+    case TIST:
+        break;
+    case WCLK:
+        switch (input_keyPressed) {
+            case K_DN: if (selection < WB_OPT) ++selection; break;
+            case K_UP: if (selection > WE_OPT) --selection; break;
+            case ENTR: option_select(); break;
+            default: break;
+        }
+        break;
     };
+}
+
+void task_scheduler() {
+    while (state != EXIT) {
+        switch (state) {
+            case MENU: menu_prompt();       break;
+            case SCHD: schedule_prompt();   break;
+            case SCHE: schedule_edit();     break;
+            case SCHV: schedule_view();     break;
+            case TIMR: timing_prompt();     break;
+            case TIED: timing_edit();       break;
+            case TIMV: timing_view();       break;
+            case TIST: stopwatch_view();    break;
+            case WCLK: worldclock_prompt(); break;
+            case WCED: worldclock_edit();   break;
+            case WCKV: worldclock_view();   break;
+            default: break;
+        }
+    }
 }
