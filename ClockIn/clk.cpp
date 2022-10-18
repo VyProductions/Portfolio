@@ -31,7 +31,10 @@ void validate(alarm_t& alarm);
 void get_dayname(char day[4], const alarm_t& alarm);
 void get_monthname(char mon[4], int month);
 void schedule_output();
+
 void menu_prompt();
+void schedule_prompt();
+
 void input_handler();
 void update();
 
@@ -88,10 +91,12 @@ long input_keyPressed;
 
 int state;
 
-#define MENU 0  // Program Is At The Main Menu
-#define SCHD 1  // Program Is Viewing The Scheduled Alarms List
-#define SCED 2  // Program Is Editing The Scheduled Alarms List
-#define TIMR 3  // Program Is Viewing The Timer
+#define MENU 0  // Program Is At The Main Options Screen
+#define SCHD 1  // Program Is At Schedule Options Screen
+#define SCHV 2  // Program Is Viewing The Scheduled Alarms List
+#define SCHE 3  // Program Is Editing The Scheduled Alarms List
+#define TIMR 4  // Program Is At Timer Options Screen
+#define TIMV 5  // Program Is Viewing The Timer
 #define TIED 4  // Program Is Editing The Timer
 #define WCLK 5  // Program Is Viewing The World Clock List
 #define WCED 6  // Program Is Editing The World Clock List
@@ -101,10 +106,14 @@ int running = 1;
 
 int selection;
 
-#define S_OPT 0
-#define T_OPT 1
-#define W_OPT 2
-#define E_OPT 3
+#define MS_OPT 0  // Menu Schedule Option Selected
+#define MT_OPT 1  // Menu Timer Option Selected
+#define MW_OPT 2  // Menu World Clock Option Selected
+#define ME_OPT 3  // Menu Exit Option Selected
+
+#define SE_OPT 0  // Schedule Edit Option Selected
+#define SV_OPT 1  // Schedule View Option Selected
+#define SB_OPT 2  // Schedule Back Option Selected
 
 std::ifstream schedule("schedule.txt");
 std::ostringstream output;
@@ -139,6 +148,7 @@ int main() {
 
     // prompt user with menu
     selection = 0;
+    state = MENU;
     menu_prompt();
 
     // print schedules
@@ -351,14 +361,25 @@ void schedule_output() {
 }
 
 void menu_prompt() {
-    state = MENU;
-
     clear();
     refresh();
+    
     printf("[%c] Schedule\r\n", (selection == 0 ? 'X' : ' '));
     printf("[%c] Timer\r\n", (selection == 1 ? 'X' : ' '));
     printf("[%c] World Clock\r\n", (selection == 2 ? 'X' : ' '));
     printf("[%c] Exit\r\n", (selection == 3 ? 'X' : ' '));
+
+    input_handler();
+}
+
+void schedule_prompt() {
+    clear();
+    refresh();
+
+    printf("Schedule Module\r\n");
+    printf("[%c] Edit Schedule\r\n", (selection == 0 ? 'X' : ' '));
+    printf("[%c] View Schedule\r\n", (selection == 1 ? 'X' : ' '));
+    printf("[%c] Back\r\n", (selection == 2 ? 'X' : ' '));
 
     input_handler();
 }
@@ -399,16 +420,16 @@ void update() {
             break;
         case ENTR:
             switch (selection) {
-            case S_OPT:
+            case MS_OPT:
                 state = SCHD;
                 break;
-            case T_OPT:
+            case MT_OPT:
                 state = TIMR;
                 break;
-            case W_OPT:
+            case MW_OPT:
                 state = WCLK;
                 break;
-            case E_OPT:
+            case ME_OPT:
                 state = EXIT;
                 break;
             default:
@@ -420,5 +441,25 @@ void update() {
             break;
         }
         break;
+    case SCHD:
+        switch (input_keyPressed) {
+        case K_DN:
+            if (selection < 2) ++selection;
+            schedule_prompt();
+            break;
+        case K_UP:
+            if (selection > 0) --selection;
+            schedule_prompt();
+            break;
+        case ENTR:
+            switch (selection) {
+            case SE_OPT:
+                break;
+            case SV_OPT:
+                break;
+            case SB_OPT:
+                break;
+            }
+        }
     };
 }
