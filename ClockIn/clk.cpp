@@ -43,6 +43,10 @@ void task_scheduler();
 
 long input_keyPressed;
 
+#define TRUNC std::ios::trunc  // filestream truncation open mode
+#define IN    std::ios::in     // filestream input open mode
+#define OUT   std::ios::out    // filestream output open mode
+
 #define K_UP 1792833  // Up Arrow
 #define K_DN 1792834  // Down Arrow
 #define K_RT 1792835  // Right Arrow
@@ -89,33 +93,42 @@ int selection;
 #define SV_OPT 0x05  // Schedule View Option Selected
 #define SB_OPT 0x06  // Schedule Back Option Selected
 
+// Schedule edit options
+
+// Schedule view options
+#define SV_CLR 0x07  // Schedule View Clear Option Selected
+#define SV_BCK 0x08  // Schedule View Back Option Selected
+#define SV_CLY 0x09  // Schedule View Clear Yes Option Selected
+#define SV_CLN 0x0A  // Schedule View Clear No Option Selected
+
 // Timing prompt options
-#define TE_OPT 0x07  // Timer Edit Option Selected
-#define TV_OPT 0x08  // Timer View Option Selected
-#define TS_OPT 0x09  // Stopwatch View Option Selected
-#define TB_OPT 0x0A  // Timer Back Option Selected
+#define TE_OPT 0x0B  // Timer Edit Option Selected
+#define TV_OPT 0x0C  // Timer View Option Selected
+#define TS_OPT 0x0D  // Stopwatch View Option Selected
+#define TB_OPT 0x0E  // Timer Back Option Selected
 
 // Timing edit options
-#define TE_SAV 0x0B  // Save Timer Option Selected
-#define TE_CNC 0x0C  // Cancel Timer Edit Option Selected
+#define TE_SAV 0x0F  // Save Timer Option Selected
+#define TE_CNC 0x10  // Cancel Timer Edit Option Selected
 
 // World clock prompt options
-#define WE_OPT 0x0D  // World Clock List Edit Option Selected
-#define WV_OPT 0x0E  // World Clock List View Option Selected
-#define WB_OPT 0x0F  // World Clock List Back Option Selected
+#define WE_OPT 0x11  // World Clock List Edit Option Selected
+#define WV_OPT 0x12  // World Clock List View Option Selected
+#define WB_OPT 0x13  // World Clock List Back Option Selected
 
 // Other Options
 #define NO_OPT 0xFF  // No Option Selected
 
-std::ifstream schedule("schedule.txt");
+std::fstream schedule("schedule.txt");
 std::ostringstream output;
 std::istringstream res_stream;
-char c;
-char mon[4];
 alarm_t res_base;
 DynamicArray<alarm_t> alarms;
 
 WINDOW* wnd;
+
+int schedule_row = 0;
+int schedule_col = 0;
 
 int timer_column = 0;
 
@@ -133,7 +146,7 @@ int main() {
     noecho();
     cbreak();
     curs_set(0);
-    refresh();
+    // refresh();
 
     // verify schedule file exists
     if (!schedule.is_open()) {
@@ -156,7 +169,9 @@ int main() {
     // send program control to task scheduler
     task_scheduler();
 
+    delwin(wnd);
     endwin();
+    schedule.close();
 
     return 0;
 }
@@ -191,12 +206,62 @@ void schedule_prompt() {
 }
 
 void schedule_edit() {
-    nodelay(wnd, true);
+    char day[4] {};
+    char mon[4] {};
+    char c;
 
-    nodelay(wnd, false);
+    nodelay(wnd, true);
 
     while (state != INRP) {
         clear(std::cout);
+
+        auto now = time(nullptr);
+        char* res = asctime(localtime(&now));
+
+        res_stream.str(res);
+        res_stream.ignore(4);
+        res_stream.get(mon, 4);
+        res_stream >> res_base.day >> res_base.hour >> c >> res_base.minute
+                   >> c >> res_base.second >> res_base.year;
+        
+        for (auto [key, value] : month_names) {
+            if (!strcmp(value, mon)) {
+                res_base.month = key;
+            }
+        }
+
+        output << "         Edit Schedule\r\n";
+        output << std::right;
+
+        for (auto p = alarms.begin(); p != alarms.end(); ++p) {
+            get_dayname(day, *p);
+            get_monthname(mon, p->month);
+
+            output << std::setfill('0') << "["
+            << (p->id == schedule_row ? 'X' : ' ')
+            << "]  ";
+
+            if (res_base < *p) {
+                output << bg_blue;
+            } else if (res_base == *p && p->hit == false) {
+                output << bg_green << '\a';
+                p->hit = true;
+            } else if (res_base == *p) {
+                output << bg_green;
+            } else {
+                output << bg_red;
+                p->hit = true;
+            }
+
+            // @todo change color scheme based on edit selection
+            output << day << ' ' << mon << ' ' << std::setw(2) << p->day << ' '
+                   << std::setw(2) << p->hour << ':' << std::setw(2) << p->minute << ':'
+                   << std::setw(2) << p->second << ' ' << p->year
+                   << std::setfill(' ') << reset << std::setw(30)
+                   << (res_base == *p ? yellow :
+                       res_base <  *p ? reset : dk_gray) << p->desc
+                   << reset << "\r\n";
+        }
 
         std::cout << output.str() << reset << std::flush;
         output.str("");
@@ -206,12 +271,17 @@ void schedule_edit() {
         input_handler();
     }
 
+    nodelay(wnd, false);
+
     //go back to schedule menu
     state = SCHD;
-    selection = SE_OPT;
 }
 
 void schedule_view() {
+    char mon[4] {};
+    char day[4] {};
+    char c;
+
     nodelay(wnd, true);
 
     while (state != INRP) {
@@ -236,9 +306,6 @@ void schedule_view() {
         output << std::right;
 
         for (auto p = alarms.begin(); p != alarms.end(); ++p) {
-            char day[4] {};
-            char mon[4] {};
-
             get_dayname(day, *p);
             get_monthname(mon, p->month);
 
@@ -273,12 +340,23 @@ void schedule_view() {
             output.put(res[i++]);
         }
 
-        output << "\r\n\nPress any key to return...";
+        output << "\r\n\n";
+
+        if (selection == SV_CLR || selection == SV_BCK) {
+            output << "    [" << (selection == SV_CLR ? 'X' : ' ')
+                   << "] Clear\r\n    [" << (selection == SV_BCK ? 'X' : ' ')
+                   << "] Back\r\n";
+        } else {
+            output << "    Are you sure you want to clear the schedule?\r\n    "
+                   << (selection == SV_CLY ?
+                      "[X] Yes [ ] No" : "[ ] Yes [X] No")
+                   << "\r\n";
+        }
 
         std::cout << output.str() << reset << std::flush;
         output.str("");
 
-        std::this_thread::sleep_for(100ms);
+        std::this_thread::sleep_for(10ms);
 
         input_handler();
     }
@@ -287,7 +365,6 @@ void schedule_view() {
 
     // go back to schedule menu
     state = SCHD;
-    selection = SV_OPT;
 }
 
 void timing_prompt() {
@@ -335,59 +412,83 @@ void timing_edit() {
     while (state != INRP) {
         clear(std::cout);
 
-        output << std::setw(18) << "Edit Timer" << std::setw(22) << "Options" << "\r\n";
-        output << std::right;
+        output << std::setw(18) << "Edit Timer" << std::setw(22) << "Options"
+               << "\r\n" << std::right;
 
         // value labels
-        output << (timer_column == 0 ? yellow : dk_gray) << std::setw(8) << "hours"
-               << (timer_column == 1 ? yellow : dk_gray) << std::setw(9) << "minutes"
-               << (timer_column == 2 ? yellow : dk_gray) << std::setw(9) << "seconds"
-               << reset << std::setw(14) << (selection == TE_SAV ? "[X]   Save" : "[ ]   Save")
-               << "\r\n";
+        output << (timer_column == 0 ? yellow : dk_gray) << std::setw(8)
+               << "hours" << (timer_column == 1 ? yellow : dk_gray)
+               << std::setw(9) << "minutes"
+               << (timer_column == 2 ? yellow : dk_gray) << std::setw(9)
+               << "seconds" << reset << std::setw(5) << '['
+               << (timer_column == 3 && selection == TE_SAV ? 'X' : ' ')
+               << "]   Save\r\n";
+
+        alarm_t current_timer {
+            0, 0, 0,
+            timer_hour, timer_minute, timer_second,
+            true, 0, false, ""
+        };
+
+        alarm_t saved_timer {
+            0, 0, 0,
+            timer_phour, timer_pminute, timer_psecond,
+            true, 0, false, ""
+        };
+
+        auto outer_color = current_timer == saved_timer ?
+            bg_lt_green : bg_lt_blue;
+
+        auto inner_color = current_timer == saved_timer ?
+            bg_green : bg_cyan;
 
         // first row
-        output << (timer_column == 0 ? bg_lt_blue : reset) << std::setw(8);
+        output << (timer_column == 0 ? outer_color : reset) << std::setw(8);
         if (timer_column == 0) output << prev_hour() << reset << ' ';
         else output << ' ' << ' ';
 
-        output << (timer_column == 1 ? bg_lt_blue : reset) << std::setw(8);
+        output << (timer_column == 1 ? outer_color : reset) << std::setw(8);
         if (timer_column == 1) output << prev_min() << reset << ' ';
         else output << ' ' << ' ';
 
-        output << (timer_column == 2 ? bg_lt_blue : reset) << std::setw(8);
+        output << (timer_column == 2 ? outer_color : reset) << std::setw(8);
         if (timer_column == 2) output << prev_sec();
         else output << ' ';
 
-        output << reset << std::setw(14) << (selection == TE_CNC ? "[X] Cancel" : "[ ] Cancel")
-               << "\r\n";
+        output << reset << std::setw(5) << '['
+               << (timer_column == 3 && selection == TE_CNC ? 'X' : ' ')
+               <<"] Cancel\r\n";
 
         // second row
-        if (timer_column == 0) output << bg_cyan << lt_blue;
+        if (timer_column == 0) output << inner_color << lt_blue;
         else output << reset << dk_gray;
         output << std::setw(8) << timer_hour << reset << ' ';
 
-        if (timer_column == 1) output << bg_cyan << lt_blue;
+        if (timer_column == 1) output << inner_color << lt_blue;
         else output << reset << dk_gray;
         output << std::setw(8) << timer_minute << reset << ' ';
 
-        if (timer_column == 2) output << bg_cyan << lt_blue;
+        if (timer_column == 2) output << inner_color << lt_blue;
         else output << reset << dk_gray;
         output << std::setw(8) << timer_second << reset << "\r\n";
 
         // third row
-        output << (timer_column == 0 ? bg_lt_blue : reset) << std::setw(8);
+        output << (timer_column == 0 ? outer_color : reset) << std::setw(8);
         if (timer_column == 0) output << next_hour();
         else output << ' ' << ' ';
 
-        output << (timer_column == 1 ? bg_lt_blue : reset) << std::setw(8);
+        output << (timer_column == 1 ? outer_color : reset) << std::setw(8);
         if (timer_column == 1) output << next_min();
         else output << ' ' << ' ';
 
-        output << (timer_column == 2 ? bg_lt_blue : reset) << std::setw(8);
+        output << (timer_column == 2 ? outer_color : reset) << std::setw(8);
         if (timer_column == 2) output << next_sec();
         else output << ' ';
 
-        output << reset << "\r\n";
+        output << reset << "\r\n\n" << inner_color << dk_gray
+               << (current_timer == saved_timer ?
+                  "No Changes Detected" : "Unsaved Changes")
+               << reset << "\r\n";
 
         std::cout << output.str() << reset << std::flush;
         output.str("");
@@ -406,7 +507,6 @@ void timing_edit() {
 
     // go back to timing menu
     state = TIMR;
-    selection = TE_OPT;
 }
 
 void timing_view() {
@@ -469,9 +569,20 @@ void option_select() {
         case MW_OPT: state = WCLK; selection = WE_OPT; break;
         case ME_OPT: state = EXIT; break;
         case SE_OPT: state = SCHE; break;
-        case SV_OPT: state = SCHV; break;
+        case SV_OPT: state = SCHV; selection = SV_CLR; break;
+        case SV_CLR: selection = SV_CLY; break;
+        case SV_CLY:
+            // clear schedule
+            schedule << "";
+            schedule.close();
+            schedule.open("schedule.txt", TRUNC|IN|OUT);
+            alarms.clear();
+            selection = SV_CLR;
+            break;
+        case SV_CLN: selection = SV_CLR; break;
+        case SV_BCK: state = INRP; selection = SV_OPT; break;
         case SB_OPT: state = MENU; selection = MS_OPT; break;
-        case TE_OPT: state = TIED; break;
+        case TE_OPT: state = TIED; selection = TE_SAV; break;
         case TE_CNC: state = INRP; selection = TE_OPT; break;
         case TE_SAV:
             timer_phour = timer_hour;
@@ -508,17 +619,29 @@ void update() {
         break;
     case SCHE:
         switch (input_keyPressed) {
-            case K_UP: break;
-            case K_DN: break;
-            case K_LT: break;
-            case K_RT: break;
+            case K_UP: if (schedule_row > 0) --schedule_row; break;
+                if (selection == SV_BCK) --selection;
+                else if (schedule_row > 0) --schedule_row;
+            case K_DN:
+                if (schedule_row < alarms.size()) ++schedule_row;
+                else if (schedule_row == alarms.size()) selection = SV_CLR;
+                break;
+            case K_LT: if (schedule_col > 0) --schedule_col; break;
+            case K_RT: if (schedule_col < 7) ++schedule_col; break;
+            case ENTR:
+                
+                break;
             default: break;
         }
         break;
     case SCHV:
         switch (input_keyPressed) {
-            case -1: /* NoInput */ break;
-            default: state = INRP; break;
+            case K_UP: if (selection == SV_BCK) --selection; break;
+            case K_DN: if (selection == SV_CLR) ++selection; break;
+            case K_LT: if (selection == SV_CLN) --selection; break;
+            case K_RT: if (selection == SV_CLY) ++selection; break;
+            case ENTR: option_select(); break;
+            default: break;
         }
         break;
     case TIMR:
@@ -533,11 +656,9 @@ void update() {
         switch (input_keyPressed) {
             case K_LT:
                 if (timer_column > 0) --timer_column;
-                if (timer_column <= 2) selection = NO_OPT;
                 break;
             case K_RT:
                 if (timer_column < 3) ++timer_column;
-                if (timer_column == 3) selection = TE_SAV;
                 break;
             case K_UP:
                 switch (timer_column) {
@@ -555,7 +676,7 @@ void update() {
                     case 3: selection = TE_CNC;        break;
                 }
                 break;
-            case ENTR: option_select(); break;
+            case ENTR: if (timer_column == 3) option_select(); break;
             default: break;
         }
         break;

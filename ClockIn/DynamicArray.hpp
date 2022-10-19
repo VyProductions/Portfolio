@@ -42,8 +42,14 @@ public:
     }
 
     ~DynamicArray() {
+        clear();
+    }
+
+    void clear() {
         delete [] data;
         data = nullptr;
+        used = 0;
+        CAPACITY = 0;
     }
 
     size_type size() { return used; }
