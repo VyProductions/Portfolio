@@ -1,0 +1,6 @@
+Stopwatch Log
+
+Fastest Lap:        0:00:00.00
+Slowest Lap:        0:00:00.00
+
+Final time:         0:00:00.00
