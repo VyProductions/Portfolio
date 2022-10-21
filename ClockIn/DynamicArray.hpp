@@ -107,7 +107,7 @@ public:
         return *(data + pos);
     }
 
-    void insert(value_type value, iterator pos = begin()) {
+    void insert(value_type value, iterator pos) {
         if (pos < begin() || pos > end()) {
             throw std::logic_error("Insert out of range.");
         }
@@ -150,7 +150,7 @@ public:
         return data[used--];
     }
 
-    iterator erase(iterator pos = begin()) {
+    iterator erase(iterator pos) {
         if (pos < begin() || pos > end()) {
             throw std::logic_error("Erase out of range.");
         }
