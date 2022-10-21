@@ -1,3 +1,2 @@
-10-18-2022 16:05:00	Test alarm impl.
-10-18-2022 23:50:00	Turn in PHIL homework.
-10-22-2022 12:00:00	Check email.
+10-21-2022 08:30:00	Wake up!
+10-22-2022 12:00:00	Saturday @ Noon
