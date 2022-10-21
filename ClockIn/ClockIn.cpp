@@ -740,8 +740,9 @@ void option_select() {
             watch_log << "Stopwatch Log\n";
 
             for (auto lap : laps) {
-                watch_log << "Lap " << std::right << std::setw(3) << lap_count++
-                          << std::setw(8) << (lap / 3600000) / 1000 << ':'
+                watch_log << std::left << "Lap " << std::setw(3) << lap_count++
+                          << std::right
+                          << std::setw(9) << (lap / 3600000) / 1000 << ':'
                           << std::setw(2) << std::setfill('0')
                           << ((lap % 3600000) / 60000) / 1000 << ':'
                           << std::setw(2) << (lap % 60000) / 1000 << '.'
@@ -749,7 +750,7 @@ void option_select() {
                           << std::setfill(' ') << '\n';
             }
 
-            watch_log << "\nFastest Lap: " << std::setw(8)
+            watch_log << "\nFastest:" << std::setw(8)
                       << (min_lap / 3600000) / 1000 << ':' << std::setw(2)
                       << std::setfill('0')
                       << ((min_lap % 3600000) / 60000) / 1000 << ':'
@@ -757,7 +758,7 @@ void option_select() {
                       << std::setw(2) << (min_lap % 1000) / 10
                       << std::setfill(' ');
 
-            watch_log << "\nSlowest Lap: " << std::setw(8)
+            watch_log << "\nSlowest:" << std::setw(8)
                       << (max_lap / 3600000) / 1000 << ':' << std::setw(2)
                       << std::setfill('0')
                       << ((max_lap % 3600000) / 60000) / 1000 << ':'
@@ -765,7 +766,7 @@ void option_select() {
                       << std::setw(2) << (max_lap % 1000) / 10
                       << std::setfill(' ');
 
-            watch_log << "\n\nFinal time:  " << std::setw(8)
+            watch_log << "\n\nFinal:" << std::setw(10)
                       << (stop_watch / 3600000) / 1000 << ':' << std::setw(2)
                       << std::setfill('0')
                       << ((stop_watch % 3600000) / 60000) / 1000 << ':'
