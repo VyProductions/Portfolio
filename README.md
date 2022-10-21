@@ -34,8 +34,14 @@
 The user may navigate around the program with arrow keys, and select a highlighted
 option with the enter key.
 
+
+<img width="700" src="Gifs/Code_pLiM5PhQQs.gif"></img>
+
 ### Notes
-> Built in WSL environment. User experience may vary.
+> Built in WSL environment. User experience may vary.  
+
+<br>
+<br>
 
 ## <b><u>Wordle Emulator</u></b>
 
@@ -50,3 +56,16 @@ option with the enter key.
 2. Yellow letters are in the word, but not in the correct spot.
 3. Gray letters are not in the word.
 4. You have 6 tries to guess the word.
+
+<br>
+
+<img width="500" src="Gifs/ubuntu_csh3DIDc7A.gif"></img>
+
+## <b><u>Cross Solver</u></b>
+
+### Synopsis:
+        An implementation of a recursive backtracking algorithm to solve
+    a crossword puzzle given the locations of blanks and the list of words
+    which are known to be the solution to the puzzle.
+
+<img width="600" src="Gifs/ubuntu_z5Jv9cvSKo.gif"></img>
