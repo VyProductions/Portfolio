@@ -47,7 +47,6 @@ using time_pnt = std::chrono::time_point<std::chrono::high_resolution_clock>;
 #define K_DN 1792834  // Down Arrow
 #define K_RT 1792835  // Right Arrow
 #define K_LT 1792836  // Left Arrow
-#define QUIT 113      // q
 #define ENTR 10       // Return
 #define DFLT -1       // Default
 

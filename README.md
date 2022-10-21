@@ -33,3 +33,20 @@
 ### User Interaction:
 The user may navigate around the program with arrow keys, and select a highlighted
 option with the enter key.
+
+### Notes
+> Built in WSL environment. User experience may vary.
+
+## <b><u>Wordle Emulator</u></b>
+
+### Synopsis:
+        A terminal emulation of the popular game "Wordle".
+    Enter 5-letter words to gain information about what the target word is.
+    Each time the program is run, a word is randomly selected from the
+    list of words in 'wordslist.txt'.
+
+### Rules:
+1. Green letters are in the correct spot.
+2. Yellow letters are in the word, but not in the correct spot.
+3. Gray letters are not in the word.
+4. You have 6 tries to guess the word.
