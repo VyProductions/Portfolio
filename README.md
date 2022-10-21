@@ -7,10 +7,14 @@
     relating to time management. Output to ANSI color-supporting terminals
     is recommended for the best user experience.
 
+### Requirements:
+1. [ncurses library](https://www.cyberciti.biz/faq/linux-install-ncurses-library-headers-on-debian-ubuntu-centos-fedora/)
+
 ### Modules:
     (1) Schedule
-        (a) Edit existing schedule, or create a new one
-        (b) View existing schedule
+        (a) View existing schedule
+        (b) Clear existing schedule
+        (c) Add entries to schedule via text file
     (2) Timer
         (a) Edit existing timer values
             (I)   Hour -> [0, 23]
@@ -20,12 +24,12 @@
             (I)   Run / Resume
             (II)  Pause
             (III) Stop
-            (IV)  Reset
         (c) View stopwatch
             (I)   Start
-            (II)  Lap
-            (III) Stop
+            (II)  Stop
+            (III) Lap
             (IV)  Reset
-    (3) World Clock
-        (a) Edit list of desired time zone displays
-        (b) View existing list of time zones
+
+### User Interaction:
+The user may navigate around the program with arrow keys, and select a highlighted
+option with the enter key.
