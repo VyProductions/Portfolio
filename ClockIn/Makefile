@@ -1,11 +1,11 @@
-clk: clk.o
-	g++ $(CXXFLAGS) clk.o -o clk -lncurses
+ClockIn: ClockIn.o
+	g++ $(CXXFLAGS) ClockIn.o -o ClockIn -lncurses
 
-clk.o:
-	g++ $(CXXFLAGS) -c clk.cpp -lncurses
+ClockIn.o:
+	g++ $(CXXFLAGS) -c ClockIn.cpp -lncurses
 
 clean:
-	rm -f clk.o clk
+	rm -f ClockIn.o ClockIn
 
-run: clean clk
-	./clk
+run: clean ClockIn
+	./ClockIn
