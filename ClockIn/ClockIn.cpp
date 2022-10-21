@@ -5,6 +5,9 @@
 /// Features ANSI color display and live input handling with the help of
 /// ncurses.
 
+// =============================================================================
+//  Library Includes
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -18,79 +21,28 @@
 #include <unordered_map>
 #include <vector>
 
-#include <ansi.hpp>
-
+// =============================================================================
+//  Local Includes
+#include "ansi.hpp"
 #include "DynamicArray.hpp"
 #include "DateTools.hpp"
 
+// =============================================================================
+//  Namespaces and Aliases
+
 using namespace std::chrono_literals;
 using namespace ansi;
+using time_pnt = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-/// @brief Utility to clear a specified output stream.
-///
-/// @param output : The output stream to clear.
-void clear(std::ostream& output);
+// =============================================================================
+//  Global Data Definitions
 
-/// @brief Display the main menu of the program to the user.
-void menu_prompt();
+// File stream open modes
+#define IN    std::ios::in     // File Stream Input Open Mode
+#define OUT   std::ios::out    // File Stream Output Open Mode
+#define TRUNC std::ios::trunc  // File Stream Truncation Open Mode
 
-/// @brief Display the schedule sub-menu to the user.
-///
-/// @note : Navigation path: [Menu] -> [Schedule]
-void schedule_prompt();
-
-/// @brief Draws the text to show the schedule and its options to the user.
-void schedule_view();
-
-/// @brief Display the timing sub-menu to the user.
-///
-/// @note : Navigation path: [Menu] -> [Timing]
-void timing_prompt();
-
-/// @brief Computes the [previous / next] value in the cycle for hr, min, sec.
-/// @param offs : How many steps [back / forward] to compute.
-/// @return [previous / next] value in the seqence.
-inline int prev_hour(int offs = 1) { return (timer_hour + 24 - offs) % 24; }
-inline int next_hour(int offs = 1) { return (timer_hour + offs) % 24; }
-inline int prev_min(int offs = 1) { return (timer_minute + 60 - offs) % 60; }
-inline int next_min(int offs = 1) { return (timer_minute + offs) % 60; }
-inline int prev_sec(int offs = 1) { return (timer_second + 60 - offs) % 60; }
-inline int next_sec(int offs = 1) { return (timer_second + offs) % 60; }
-
-/// @brief Allow the user to modify the values of the existing timer.
-///
-/// @note : Use the left or right arrow key to navigate the timer columns.
-/// @note : Use the up or down arrow key to change the values of the numbers.
-void timing_edit();
-
-/// @brief Draws the text to display the timer and its options.
-void timing_view();
-
-/// @brief Draws the text related to the stopwatch utility of the timing module.
-void stopwatch_view();
-
-/// @brief Processes user input and then calls the update() function.
-///
-/// @note : The set of user input consists of arrow key and enter key presses.
-void input_handler();
-
-/// @brief Handles what happens when the user presses the 'enter' key while
-/// a valid option is selected.
-void option_select();
-
-/// @brief Handles changes to the screen due to user interaction.
-void update();
-
-/// @brief Handles the control transfer of the program between functions.
-void task_scheduler();
-
-long input_keyPressed;
-
-#define TRUNC std::ios::trunc  // filestream truncation open mode
-#define IN    std::ios::in     // filestream input open mode
-#define OUT   std::ios::out    // filestream output open mode
-
-// input values
+// Input id values
 #define K_UP 1792833  // Up Arrow
 #define K_DN 1792834  // Down Arrow
 #define K_RT 1792835  // Right Arrow
@@ -99,121 +51,177 @@ long input_keyPressed;
 #define ENTR 10       // Return
 #define DFLT -1       // Default
 
-int state;         // what state the program is in
-
-// Menu state
+// State id values
 #define MENU 0x00  // Program Is At The Main Options Screen
-
-// Schedule module states
 #define SCHD 0x01  // Program Is At Schedule Options Screen
 #define SCHE 0x02  // Program Is Editing The Scheduled Alarms List
 #define SCHV 0x03  // Program Is Viewing The Scheduled Alarms List
-
-// Timing module states
 #define TIMR 0x04  // Program Is At Timing Options Screen
 #define TIED 0x05  // Program Is Editing The Timer
 #define TIMV 0x06  // Program Is Viewing The Timer
 #define TIST 0x07  // Program Is Viewing The Stopwatch
-
-// Timer view states
 #define TISP 0x08  // Timer is stopped
 #define TIRN 0x09  // Timer is running
 #define TIPS 0x0A  // Timer is paused
-
-// Stopwatch states
 #define TSSP 0x0B  // Stopwatch is stopped
 #define TSRN 0x0C  // Stopwatch is running
-
-// World clock module states
 #define WCLK 0x0D  // Program Is At World Clock Options Screen
 #define WCED 0x0E  // Program Is Editing The World Clock List
 #define WCKV 0x0F  // Program Is Viewing The World Clock List
-
-// Termination states
 #define INRP 0xFE  // Program Is Interrupting Current Execution
 #define EXIT 0xFF  // Program Is Exiting
 
-int selection;       // Which option is currently targeted
-
-// Menu prompt options
+// Option id values
 #define MS_OPT 0x00  // Menu Schedule Option Selected
 #define MT_OPT 0x01  // Menu Timer Option Selected
 #define ME_OPT 0x02  // Menu Exit Option Selected
-
-// Schedule prompt options
 #define SV_OPT 0x03  // Schedule View Option Selected
 #define SB_OPT 0x04  // Schedule Back Option Selected
-
-// Schedule view options
 #define SV_CLR 0x05  // Schedule View Clear Option Selected
 #define SV_BCK 0x06  // Schedule View Back Option Selected
 #define SV_CLY 0x07  // Schedule View Clear Yes Option Selected
 #define SV_CLN 0x08  // Schedule View Clear No Option Selected
-
-// Timing prompt options
 #define TE_OPT 0x09  // Timer Edit Option Selected
 #define TV_OPT 0x0A  // Timer View Option Selected
 #define TS_OPT 0x0B  // Stopwatch View Option Selected
 #define TB_OPT 0x0C  // Timer Back Option Selected
-
-// Timing edit options
 #define TE_SAV 0x0D  // Save Timer Option Selected
 #define TE_CNC 0x0E  // Cancel Timer Edit Option Selected
-
-// Timing view options
 #define TV_RUN 0x0F  // Timer View Run Option Selected
 #define TV_RES 0x10  // Timer View Resume Option Selected
 #define TV_PAU 0x11  // Timer View Pause Option Selected
 #define TV_STP 0x12  // Timer View Stop Option Selected
 #define TV_BCK 0x13  // Timer View Back Option Selected
-
-// Stopwatch options
 #define TS_STR 0x14  // Stopwatch Start Option Selected
 #define TS_STP 0x15  // Stopwatch Stop Option Selected
 #define TS_LAP 0x16  // Stopwatch Lap Option Selected
 #define TS_RES 0x17  // Stopwatch Reset Option Selected
 #define TS_WRT 0x18  // Stopwatch Write Out Option Selected
 #define TS_BCK 0x19  // Stopwatch Back Option Selected
-
-// Other Options
 #define NO_OPT 0xFF  // No Option Selected
 
-// aliases
-using time_pnt = std::chrono::time_point<std::chrono::high_resolution_clock>;
+// =============================================================================
+//  Global Variables
 
 std::fstream schedule("schedule.txt", IN | OUT);  // alarm input data file
 
-std::ostringstream output;      // output string stream to avoid buffering
+std::ostringstream output;      // output string stream to decrease buffer usage
 std::istringstream res_stream;  // pseudo-input stream to parse asctime() text
 
+WINDOW* wnd;                    // ncurses window object
+
+// general program information
+long input_keyPressed;  // what key was just pressed
+int state;              // which state the program is currently in
+int selection;          // which option is currently highlighted
+
+// schedule data structures
 alarm_t res_base;               // stores values from asctime() parse
 DynamicArray<alarm_t> alarms;   // collection of alarms in schedule
 
-WINDOW* wnd;                // ncurses window object
+// timer information
+int timer_column = 0;  // which value is being targeted in the timer editor
+int timer_hour = 0;    // temporary hr  value for timer editor
+int timer_minute = 0;  // temporary min value for timer editor
+int timer_second = 0;  // temporary sec value for timer editor
 
-int timer_column = 0;       // which value is being targeted in the timer editor
-int timer_hour = 0;         // temporary hr  value for timer editor
-int timer_minute = 0;       // temporary min value for timer editor
-int timer_second = 0;       // temporary sec value for timer editor
-
-alarm_t saved_timer {       // stores current choice for hr, min, sec values
-    0, 0, 0,                // of the timer
+// stores current choice for hr, min, sec values of the timer
+alarm_t saved_timer {
+    0, 0, 0,
     timer_hour, timer_minute, timer_second,
     true, 0, false, ""
 };
-time_t timer_start;         // time when timer was first started
-time_t timer_target;        // time when timer will finish and sound
-time_t timer_pause;         // time of most recent pause event
-bool hit_timer = false;     // whether the timer has finished and sounded
 
-std::fstream watch_log;     // stopwatch output log file
-int lap_count = 0;          // count for how many laps will be in the log file
+time_t timer_start;      // time when timer was first started
+time_t timer_target;     // time when timer will finish and sound
+time_t timer_pause;      // time of most recent pause event
+bool hit_timer = false;  // whether the timer has finished and sounded
+
+DynamicArray<long> laps;  // Container to store lap times for output
+std::fstream watch_log;   // stopwatch output log file
+int lap_count = 0;        // count for how many laps will be in the log file
 
 long stop_watch = 0;  // accumulator of ms passed since stopwatch started
 long lap_time   = 0;  // measure of ms of last lap
 long last_lap   = 0;  // stopwatch ms value when last lap ended
 long min_lap    = 0;  // ms value of fastest lap
 long max_lap    = 0;  // ms value of slowest lap
+
+// =============================================================================
+//  Function Prototypes
+
+/// @brief Utility to clear a specified output stream.
+///
+/// @param output : The output stream to clear.
+
+inline void clear(std::ostream& output) { output << "\033[2J\033[1;1H"; }
+
+/// @brief Display the main menu of the program to the user.
+
+void menu_prompt();
+
+/// @brief Display the schedule sub-menu to the user.
+///
+/// @note : Navigation path: [Menu] -> [Schedule]
+
+void schedule_prompt();
+
+/// @brief Draws the text to show the schedule and its options to the user.
+
+void schedule_view();
+
+/// @brief Display the timing sub-menu to the user.
+///
+/// @note : Navigation path: [Menu] -> [Timing]
+
+void timing_prompt();
+
+/// @brief Computes the [previous / next] value in the cycle for hr, min, sec.
+///
+/// @param offs : How many steps [back / forward] to compute.
+///
+/// @return [previous / next] value in the seqence.
+
+inline int prev_hour(int offs = 1) { return (timer_hour + 24 - offs) % 24; }
+inline int next_hour(int offs = 1) { return (timer_hour + offs) % 24; }
+inline int prev_min(int offs = 1) { return (timer_minute + 60 - offs) % 60; }
+inline int next_min(int offs = 1) { return (timer_minute + offs) % 60; }
+inline int prev_sec(int offs = 1) { return (timer_second + 60 - offs) % 60; }
+inline int next_sec(int offs = 1) { return (timer_second + offs) % 60; }
+
+/// @brief Allow the user to modify the values of the existing timer.
+
+void timing_edit();
+
+/// @brief Draws the text to display the timer and its options.
+
+void timing_view();
+
+/// @brief Draws the text related to the stopwatch utility of the timing module.
+
+void stopwatch_view();
+
+/// @brief Processes user input and then calls the update() function.
+///
+/// @note : The set of user input consists of arrow key and enter key presses.
+
+void input_handler();
+
+/// @brief Handles what happens when the user presses the 'enter' key while
+/// a valid option is selected.
+
+void option_select();
+
+/// @brief Handles changes to the screen due to user interaction.
+
+void update();
+
+/// @brief Handles the control transfer of the program between functions.
+
+void task_scheduler();
+
+// =============================================================================
+//  Main Entry Point
 
 int main() {
     clear(std::cout);
@@ -227,8 +235,6 @@ int main() {
     std::sort(alarms.begin(), alarms.end(), [](alarm_t a, alarm_t b){
         return a < b;
     });
-
-    std::this_thread::sleep_for(1000ms);
     
     clear();
 
@@ -246,9 +252,8 @@ int main() {
     return 0;
 }
 
-void clear(std::ostream& output) {
-    output << "\033[2J\033[1;1H";
-}
+// =============================================================================
+//  Function Definitions
 
 void menu_prompt() {
     clear();
@@ -320,9 +325,9 @@ void schedule_view() {
             }
 
             output << day << ' ' << mon << ' ' << std::setw(2) << p->day << ' '
-                   << std::setw(2) << p->hour << ':' << std::setw(2) << p->minute << ':'
-                   << std::setw(2) << p->second << ' ' << p->year
-                   << std::setfill(' ') << reset << std::setw(30)
+                   << std::setw(2) << p->hour << ':' << std::setw(2)
+                   << p->minute << ':' << std::setw(2) << p->second << ' '
+                   << p->year << std::setfill(' ') << reset << std::setw(30)
                    << (res_base == *p ? yellow :
                        res_base <  *p ? reset : dk_gray) << p->desc
                    << reset << "\r\n";
@@ -552,9 +557,6 @@ void stopwatch_view() {
     state = TSSP;
 
     nodelay(wnd, true);
-    watch_log.open("stopwatch_log.txt", TRUNC | OUT);
-
-    watch_log << "Stopwatch Log\n";
 
     time_pnt stop;
 
@@ -575,7 +577,7 @@ void stopwatch_view() {
                << "\r\n";
 
         // lap time
-        output << "\r\n  Lap:" << std::setw(8)
+        output << "\r\n  Lap:" << std::setw(12)
                << (lap_time / 3600000) / 1000 << ':' << std::setw(2)
                << std::setfill('0')
                << ((lap_time % 3600000) / 60000) / 1000 << ':'
@@ -619,9 +621,6 @@ void stopwatch_view() {
                << "] Write Log\r\n["
                << (selection == TS_BCK ? 'X' : ' ') << "] Back\r\n";
 
-        output << "\r\n  Select 'Back' to write the stopwatch data of the most"
-               << "\r\nrecent trial to the output file 'stopwatch_log.txt'.";
-
         std::cout << output.str() << reset << std::flush;
         output.str("");
 
@@ -635,30 +634,7 @@ void stopwatch_view() {
         input_handler();
     }
 
-    watch_log << "\nFastest Lap: " << std::setw(8)
-              << (min_lap / 3600000) / 1000 << ':' << std::setw(2)
-              << std::setfill('0')
-              << ((min_lap % 3600000) / 60000) / 1000 << ':'
-              << std::setw(2) << (min_lap % 60000) / 1000 << '.'
-              << std::setw(2) << (min_lap % 1000) / 10
-              << std::setfill(' ')
-              << "\nSlowest Lap: " << std::setw(8)
-              << (max_lap / 3600000) / 1000 << ':' << std::setw(2)
-              << std::setfill('0')
-              << ((max_lap % 3600000) / 60000) / 1000 << ':'
-              << std::setw(2) << (max_lap % 60000) / 1000 << '.'
-              << std::setw(2) << (max_lap % 1000) / 10
-              << std::setfill(' ')
-              << "\n\nFinal time:  " << std::setw(8)
-              << (stop_watch / 3600000) / 1000 << ':' << std::setw(2)
-              << std::setfill('0')
-              << ((stop_watch % 3600000) / 60000) / 1000 << ':'
-              << std::setw(2) << (stop_watch % 60000) / 1000 << '.'
-              << std::setw(2) << (stop_watch % 1000) / 10
-              << std::setfill(' ') << '\n';
-
     nodelay(wnd, false);
-    watch_log.close();
 
     // go back to timing menu
     state = TIMR;
@@ -693,7 +669,6 @@ void option_select() {
     switch (selection) {
         case MS_OPT: state = SCHD; selection = SV_OPT; break;
         case MT_OPT: state = TIMR; selection = TE_OPT; break;
-        case MW_OPT: state = WCLK; selection = WE_OPT; break;
         case ME_OPT: state = EXIT; break;
         case SV_OPT: state = SCHV; selection = SV_CLR; break;
         case SV_CLR: selection = SV_CLY; break;
@@ -747,13 +722,8 @@ void option_select() {
             min_lap = (min_lap == 0 || lap_time < min_lap ? lap_time : min_lap);
             max_lap = (lap_time > max_lap ? lap_time : max_lap);
             last_lap = stop_watch;
-            watch_log << "Lap " << lap_count++ << std::setw(8)
-                      << (lap_time / 3600000) / 1000 << ':' << std::setw(2)
-                      << std::setfill('0')
-                      << ((lap_time % 3600000) / 60000) / 1000 << ':'
-                      << std::setw(2) << (lap_time % 60000) / 1000 << '.'
-                      << std::setw(2) << (lap_time % 1000) / 10
-                      << std::setfill(' ') << '\n';
+
+            laps.push_back(lap_time);
             break;
         case TS_RES:
             stop_watch = 0;
@@ -761,14 +731,53 @@ void option_select() {
             last_lap = 0;
             min_lap = 0;
             max_lap = 0;
-            lap_count = 0;
             selection = TS_LAP;
+            laps.clear();
+            break;
+        case TS_WRT:
+            lap_count = 0;
+
+            watch_log.open("stopwatch_log.txt", TRUNC | OUT);
+            watch_log << "Stopwatch Log\n";
+
+            for (auto lap : laps) {
+                watch_log << "Lap " << std::right << std::setw(3) << lap_count++
+                          << std::setw(8) << (lap / 3600000) / 1000 << ':'
+                          << std::setw(2) << std::setfill('0')
+                          << ((lap % 3600000) / 60000) / 1000 << ':'
+                          << std::setw(2) << (lap % 60000) / 1000 << '.'
+                          << std::setw(2) << (lap % 1000) / 10
+                          << std::setfill(' ') << '\n';
+            }
+
+            watch_log << "\nFastest Lap: " << std::setw(8)
+                      << (min_lap / 3600000) / 1000 << ':' << std::setw(2)
+                      << std::setfill('0')
+                      << ((min_lap % 3600000) / 60000) / 1000 << ':'
+                      << std::setw(2) << (min_lap % 60000) / 1000 << '.'
+                      << std::setw(2) << (min_lap % 1000) / 10
+                      << std::setfill(' ');
+
+            watch_log << "\nSlowest Lap: " << std::setw(8)
+                      << (max_lap / 3600000) / 1000 << ':' << std::setw(2)
+                      << std::setfill('0')
+                      << ((max_lap % 3600000) / 60000) / 1000 << ':'
+                      << std::setw(2) << (max_lap % 60000) / 1000 << '.'
+                      << std::setw(2) << (max_lap % 1000) / 10
+                      << std::setfill(' ');
+
+            watch_log << "\n\nFinal time:  " << std::setw(8)
+                      << (stop_watch / 3600000) / 1000 << ':' << std::setw(2)
+                      << std::setfill('0')
+                      << ((stop_watch % 3600000) / 60000) / 1000 << ':'
+                      << std::setw(2) << (stop_watch % 60000) / 1000 << '.'
+                      << std::setw(2) << (stop_watch % 1000) / 10
+                      << std::setfill(' ') << '\n';
+
+                watch_log.close();
             break;
         case TS_BCK: state = INRP; selection = TS_OPT; break;
         case TB_OPT: state = MENU; selection = MT_OPT; break;
-        case WE_OPT: state = WCED; break;
-        case WV_OPT: state = WCKV; break;
-        case WB_OPT: state = MENU; selection = MW_OPT; break;
         default: break;
     }
 }
@@ -879,7 +888,7 @@ void update() {
                 switch (selection) {
                     case TS_LAP:
                     case TS_RES: selection = TS_STR; break;
-                    case TS_WRT: selection -= 1 + (int)(stop_watch > 0); break;
+                    case TS_WRT: selection -= 2 - (int)(stop_watch > 0); break;
                     case TS_BCK: --selection; break;
                 }
                 break;
@@ -915,14 +924,6 @@ void update() {
             default: break;
         }
         break;
-    case WCLK:
-        switch (input_keyPressed) {
-            case K_UP: if (selection > WE_OPT) --selection; break;
-            case K_DN: if (selection < WB_OPT) ++selection; break;
-            case ENTR: option_select(); break;
-            default: break;
-        }
-        break;
     };
 }
 
@@ -936,10 +937,9 @@ void task_scheduler() {
             case TIED: timing_edit();       break;
             case TIMV: timing_view();       break;
             case TIST: stopwatch_view();    break;
-            case WCLK: worldclock_prompt(); break;
-            case WCED: worldclock_edit();   break;
-            case WCKV: worldclock_view();   break;
             default: break;
         }
     }
 }
+
+// =============================================================================

@@ -1,55 +1,55 @@
+/// @file DateTools.hpp
+/// @author William Simpson <simpsw1@nevada.unlv.edu>
+/// @date 10-20-2022
+/// @brief Collection of date-oriented utilities written for CLockIn.cpp.
 
+#ifndef DATE_TOOLS_HPP_
+#define DATE_TOOLS_HPP_
+
+using namespace std::chrono_literals;
+
+// DynamicArray<alarm_t> and alarm_t extraction / insertion overloads
 std::istream& operator>>(std::istream& input, DynamicArray<alarm_t>& alarms);
 std::istream& operator>>(std::istream& input, alarm_t& alarm);
 std::ostream& operator<<(std::ostream& output, alarm_t& alarm);
 
+// alarm_t struct comparison overloads
 bool operator==(alarm_t lhs, alarm_t rhs);
 bool operator<(alarm_t lhs, alarm_t rhs);
 
+/// @brief Validates an alarm_t's values and stores the result in the alarm's
+/// 'valid' member.
+///
+/// @param alarm : The alarm to validate.
+
 void validate(alarm_t& alarm);
+
+/// @brief Retreive the name of a day from the date information in the alarm.
+/// @param day : The 3-character abbreviation of the resulting day.
+/// @param alarm : The alarm data to use.
+
 void get_dayname(char day[4], const alarm_t& alarm);
+
+/// @brief Retreive the name of a month from the number of the month.
+/// @param mon : The 3-character abbreviation of the resulting month.
+/// @param month : The number of the month to use.
+
 void get_monthname(char mon[4], int month);
 
 std::unordered_map<int, int> month_days {
-    {1, 31},
-    {2, 28},
-    {3, 31},
-    {4, 30},
-    {5, 31},
-    {6, 30},
-    {7, 31},
-    {8, 31},
-    {9, 30},
-    {10, 31},
-    {11, 30},
-    {12, 31}
+    {1, 31}, {2, 28}, {3, 31}, {4, 30}, {5, 31}, {6, 30},
+    {7, 31}, {8, 31}, {9, 30}, {10, 31}, {11, 30}, {12, 31}
 };
 
 std::unordered_map<int, const char*> day_names {
-    {0, "Sun"},
-    {1, "Mon"},
-    {2, "Tue"},
-    {3, "Wed"},
-    {4, "Thu"},
-    {5, "Fri"},
-    {6, "Sat"},
-    {7, "N/A"}
+    {0, "Sun"}, {1, "Mon"}, {2, "Tue"}, {3, "Wed"},
+    {4, "Thu"}, {5, "Fri"}, {6, "Sat"}, {7, "N/A"}
 };
 
 std::unordered_map<int, const char*> month_names {
-    {1, "Jan"},
-    {2, "Feb"},
-    {3, "Mar"},
-    {4, "Apr"},
-    {5, "May"},
-    {6, "Jun"},
-    {7, "Jul"},
-    {8, "Aug"},
-    {9, "Sep"},
-    {10, "Oct"},
-    {11, "Nov"},
-    {12, "Dec"},
-    {13, "N/A"}
+    {1, "Jan"}, {2, "Feb"}, {3, "Mar"}, {4, "Apr"}, {5, "May"},
+    {6, "Jun"}, {7, "Jul"}, {8, "Aug"}, {9, "Sep"}, {10, "Oct"},
+    {11, "Nov"}, {12, "Dec"}, {13, "N/A"}
 };
 
 std::istream& operator>>(std::istream& input, DynamicArray<alarm_t>& alarms) {
@@ -69,6 +69,8 @@ std::istream& operator>>(std::istream& input, DynamicArray<alarm_t>& alarms) {
         printf("Invalid alarm syntax on alarm #%ld.\r\n", alarms.size() + 1);
     }
 
+    std::this_thread::sleep_for(1000ms);
+
     return input;
 }
 
@@ -79,48 +81,28 @@ std::istream& operator>>(std::istream& input, alarm_t& alarm) {
     input.ignore(1);
     std::getline(input, alarm.desc);
 
-    if (input) {
-        validate(alarm);
-    }
+    if (input) validate(alarm);
 
     return input;
 }
 
 std::ostream& operator<<(std::ostream& output, alarm_t& alarm) {
     return output << alarm.month << '-' << alarm.day << '-' << alarm.year << ' '
-          << alarm.hour << ':' << alarm.minute << ':' << alarm.second;
+        << alarm.hour << ':' << alarm.minute << ':' << alarm.second;
 }
 
 bool operator==(alarm_t lhs, alarm_t rhs) {
-    return lhs.month == rhs.month &&
-           lhs.day == rhs.day &&
-           lhs.year == rhs.year &&
-           lhs.hour == rhs.hour &&
-           lhs.minute == rhs.minute &&
-           lhs.second == rhs.second;
+    return lhs.month == rhs.month && lhs.day == rhs.day &&
+           lhs.year == rhs.year && lhs.hour == rhs.hour &&
+           lhs.minute == rhs.minute && lhs.second == rhs.second;
 }
 
 bool operator<(alarm_t lhs, alarm_t rhs) {
-    return lhs.year < rhs.year ||
-        (lhs.year <= rhs.year && 
-         (lhs.month < rhs.month ||
-          (lhs.month <= rhs.month &&
-           (lhs.day < rhs.day ||
-            (lhs.day <= rhs.day &&
-             (lhs.hour < rhs.hour ||
-              (lhs.hour <= rhs.hour &&
-               (lhs.minute < rhs.minute ||
-                (lhs.minute <= rhs.minute &&
-                 (lhs.second < rhs.second)
-                )
-               )
-              )
-             )
-            )
-           )
-          )
-         )
-        );
+    return lhs.year < rhs.year || (lhs.year <= rhs.year && 
+        (lhs.month < rhs.month || (lhs.month <= rhs.month &&
+        (lhs.day < rhs.day || (lhs.day <= rhs.day && (lhs.hour < rhs.hour ||
+        (lhs.hour <= rhs.hour && (lhs.minute < rhs.minute ||
+        (lhs.minute <= rhs.minute && (lhs.second < rhs.second))))))))));
 }
 
 void validate(alarm_t& alarm) {
@@ -182,3 +164,5 @@ void get_monthname(char mon[4], int month) {
         }
     }
 }
+
+#endif  /* DATE_TOOLS_HPP_ */

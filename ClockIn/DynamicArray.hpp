@@ -1,4 +1,13 @@
+/// @file DynamicArray.hpp
+/// @author William Simpson <simpsw1@unlv.nevada.edu>
+/// @date 10-20-2022
+/// @brief Templatized dynamically allocated array wrapper class to assist in
+/// processing the schedule information for ClockIn.cpp.
+
 #include <string>
+
+#ifndef DYNAMIC_ARRAY_HPP_
+#define DYNAMIC_ARRAY_HPP_
 
 template <class InputIt, class OutputIt>
 static void copy(InputIt first, InputIt last, OutputIt d_first);
@@ -173,3 +182,5 @@ static Iterator find(Iterator first, Iterator last, T value) {
 
     return first;
 }
+
+#endif  /* DYNAMIC_ARRAY_HPP_ */
