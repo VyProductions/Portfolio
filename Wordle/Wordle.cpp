@@ -6,6 +6,9 @@
 /// @note Using an ANSI color-supporting terminal is recommended for the best
 /// user experience.
 
+// =============================================================================
+//  Library Includes
+
 #include <cctype>
 #include <cstdlib>
 #include <ctime>
@@ -18,7 +21,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ansi.hpp"
+// =============================================================================
+//  Local Includes
+
+#include "../ansi.hpp"
 
 // =============================================================================
 //  Global Data Definitions
@@ -74,9 +80,13 @@ struct board_t {
     }
 } board;  // Global board for game
 
-std::ostringstream output;      // output string stream to decrease buffer usage
+// output string stream to decrease buffer usage
+std::ostringstream output;
 
+// vector of words for random word generation
 std::vector<std::string> word_set;
+
+// map of words for constant-time validation of guesses
 std::unordered_map<std::string, int> word_dict;
 
 // =============================================================================
@@ -213,6 +223,11 @@ void wordle(std::string& word) {
             output << "You guessed the word!\n\nThe word was " << word << '\n';
         } else if (board.num_guesses + 1 == MAX_GUESSES) {
             running = false;
+
+            output << ansi::dk_gray << '[' << ansi::green << " W O R D L E "
+                   << ansi::dk_gray << ']' << ansi::reset << '\n';
+            board.add_word(guess);
+            output << board << '\n';
 
             output << "You ran out of guesses!\n\nThe word was " << word
                    << '\n';
