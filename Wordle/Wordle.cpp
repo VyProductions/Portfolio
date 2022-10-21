@@ -195,23 +195,29 @@ void wordle(std::string& word) {
 
     while (running) {
         std::cin >> guess;
+        
+        clear(std::cout);
 
         for (auto& ch : guess) {
             ch = (char)toupper(ch);
         }
 
-        clear(std::cout);
-
         if (guess == word) {
             running = false;
+            clear(std::cout);
+            output << ansi::dk_gray << '[' << ansi::green << " W O R D L E "
+                   << ansi::dk_gray << ']' << ansi::reset << '\n';
+            board.add_word(guess);
+            output << board << '\n';
 
             output << "You guessed the word!\n\nThe word was " << word << '\n';
-        } else if (board.num_guesses == MAX_GUESSES) {
+        } else if (board.num_guesses + 1 == MAX_GUESSES) {
             running = false;
 
             output << "You ran out of guesses!\n\nThe word was " << word
                    << '\n';
         } else {
+
             output << ansi::dk_gray << '[' << ansi::green << " W O R D L E "
                    << ansi::dk_gray << ']' << ansi::reset << '\n';
 
