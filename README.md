@@ -55,7 +55,7 @@ option with the enter key.
 1. Green letters are in the correct spot.
 2. Yellow letters are in the word, but not in the correct spot.
 3. Gray letters are not in the word.
-4. You have 6 tries to guess the word.
+4. You have 7 tries to guess the word.
 
 <br>
 
